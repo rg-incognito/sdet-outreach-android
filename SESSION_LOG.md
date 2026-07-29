@@ -101,10 +101,14 @@ outer proot process (and therefore cron, running inside it) alive indefinitely.
 the Termux session. Verified via `ps -ef` showing `/usr/sbin/cron` with **PPID 1**
 (properly re-parented/daemonized, not a zombie tied to the login shell).
 
-The crontab entry itself: `0 9,18 * * * cd /root/SDETOutreach && /usr/bin/npm run run-all
->> /root/SDETOutreach/logs/cron.log 2>&1` — set via `echo "..." | crontab -` rather than
-the interactive `crontab -e`, to avoid driving `nano`/`vi` through the same adb-input
-technique.
+The crontab entry itself (originally `0 9,18 * * *`, matching the laptop's Task
+Scheduler job, later changed to `0 */2 * * *` — every 2 hours — per request, since the
+phone and laptop schedules were deliberately decoupled): set via `echo "..." | crontab -`
+rather than the interactive `crontab -e`, to avoid driving `nano`/`vi` through the same
+adb-input technique. Editing it later is simple and doesn't disturb the already-running
+cron daemon: `proot-distro login ubuntu` again (a second login into the same rootfs),
+re-run the `echo ... | crontab -` line, `exit` — the running daemon notices the crontab
+file's new mtime on its own.
 
 `termux-wake-lock` (run once in plain Termux, not inside proot) tells Android not to
 fully sleep the CPU while Termux is backgrounded — confirmed via the persistent

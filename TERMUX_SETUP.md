@@ -173,9 +173,15 @@ Inside the proot, install cron and set the crontab (no interactive editor needed
 this pipes the line straight in, avoiding `crontab -e`'s nano/vi dependency):
 ```sh
 apt install -y cron
-echo "0 9,18 * * * cd /root/SDETOutreach && /usr/bin/npm run run-all >> /root/SDETOutreach/logs/cron.log 2>&1" | crontab -
+echo "0 */2 * * * cd /root/SDETOutreach && /usr/bin/npm run run-all >> /root/SDETOutreach/logs/cron.log 2>&1" | crontab -
 crontab -l   # verify
 ```
+(`0 */2 * * *` runs at the top of every even hour — 12 times a day. This phone's
+schedule was deliberately set to run more often than the laptop's 9 AM/6 PM Task
+Scheduler job — they're independent schedules, not required to match. To edit later
+without disturbing the already-running cron daemon, `proot-distro login ubuntu` again —
+a second login into the same rootfs, run `echo "..." | crontab -` again, then `exit` —
+the running daemon picks up crontab file changes on its own, no restart needed.)
 
 `service cron start` only starts cron for the current proot session — proot has no real
 init system, so a daemon started this way dies the moment the `proot-distro login` shell
