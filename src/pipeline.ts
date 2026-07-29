@@ -43,7 +43,9 @@ export async function runPipeline(cfg: Config, dryRun: boolean): Promise<FilterC
 
   const masterResume = await loadMasterResume(cfg.masterResumePath);
   const geminiClient = createGeminiClient(cfg);
-  const browser = await chromium.launch();
+  const browser = await chromium.launch({
+    args: ["--no-sandbox", "--disable-setuid-sandbox", "--disable-dev-shm-usage"],
+  });
 
   // Guards against sending twice in the same run if the Posts sheet has more than one
   // row for the same recruiter email (e.g. they posted more than once).

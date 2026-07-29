@@ -1,11 +1,19 @@
-# SDETOutreach
+# SDETOutreach (Android/Termux edition)
+
+This is a fork of [SDETOutreach](https://github.com/rg-incognito/sdet-outreach) adapted
+to run natively on an Android phone inside Termux, instead of a Windows laptop. See
+`TERMUX_SETUP.md` for the setup guide and `SESSION_LOG.md` for how it was actually set up
+(including the problems hit and how they were fixed). The only code difference from the
+laptop version is `--no-sandbox --disable-setuid-sandbox --disable-dev-shm-usage` on the
+three Chromium launch sites, required to run headless Chromium inside a `proot`
+container.
 
 Finds LinkedIn posts asking Automation Test Engineer / SDET candidates to send their
 resume, and automatically emails a personalized outreach message with your resume
-attached. Scraping and sending both still run locally on this PC (LinkedIn needs the
-local session, and Gmail sends need this machine to be on), but the Posts/Tracker data
+attached. Scraping and sending both still run on this device (LinkedIn needs the local
+session, and Gmail sends need this device to be reachable), but the Posts/Tracker data
 itself lives in an online Google Sheet — open it from your phone or any browser, no need
-to be at this PC or have Excel installed.
+to be at this device or have Excel installed.
 
 ```
 npm run run-all              # scrape LinkedIn -> tailor -> send, all in one run

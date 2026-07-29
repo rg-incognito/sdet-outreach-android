@@ -45,7 +45,9 @@ export async function renderResumeToPdf(
       // The shared browser instance may have crashed from unrelated prior use (seen in
       // practice under sustained scraping load); fall back to a fresh throwaway browser
       // rather than letting one bad render take down every remaining job in the run.
-      const fallbackBrowser = await chromium.launch();
+      const fallbackBrowser = await chromium.launch({
+        args: ["--no-sandbox", "--disable-setuid-sandbox", "--disable-dev-shm-usage"],
+      });
       try {
         return await renderWithBrowser(fallbackBrowser, html, outputPath);
       } finally {
@@ -54,7 +56,9 @@ export async function renderResumeToPdf(
     }
   }
 
-  const ownBrowser = await chromium.launch();
+  const ownBrowser = await chromium.launch({
+    args: ["--no-sandbox", "--disable-setuid-sandbox", "--disable-dev-shm-usage"],
+  });
   try {
     return await renderWithBrowser(ownBrowser, html, outputPath);
   } finally {

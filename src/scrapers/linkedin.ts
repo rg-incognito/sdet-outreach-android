@@ -117,7 +117,12 @@ export const linkedinScraper: JobScraper = {
       return results;
     }
 
-    const browser = await chromium.launch();
+    // --no-sandbox/--disable-setuid-sandbox/--disable-dev-shm-usage are required to run
+    // headless Chromium inside a proot container (Termux's proot-distro Ubuntu on Android),
+    // which can't set up the user/PID namespaces Chromium's own sandbox wants.
+    const browser = await chromium.launch({
+      args: ["--no-sandbox", "--disable-setuid-sandbox", "--disable-dev-shm-usage"],
+    });
     try {
       const context = await browser.newContext({ storageState: storageStatePath });
       let page = await context.newPage();
