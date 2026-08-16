@@ -46,10 +46,17 @@ object LinkedInScraper {
         for (query in config.queries) {
             if (results.size >= config.maxJobsPerRun) break
 
-            var searchUrl = "https://www.linkedin.com/search/results/content/" +
+            // LinkedIn's dedicated "content" (Posts-only) search vertical started
+            // returning zero results for every query, even broad single-keyword ones,
+            // while the same keywords against the "all" vertical still surface real
+            // matching posts (verified by hand, browser address bar showed
+            // origin=SWITCH_SEARCH_VERTICAL after switching the results filter from
+            // "Posts" to "All"). "all" mixes Jobs/People/Posts results together, so
+            // extractPosts()'s email/opportunity filtering downstream is what keeps
+            // non-post results out of the Posts sheet.
+            var searchUrl = "https://www.linkedin.com/search/results/all/" +
                 "?keywords=${encodeURIComponent(query)}" +
-                "&origin=FACETED_SEARCH" +
-                "&sortBy=${encodeURIComponent("[\"date_posted\"]")}"
+                "&origin=SWITCH_SEARCH_VERTICAL"
             if (config.regionGeoUrn.isNotEmpty()) {
                 searchUrl += "&geoUrn=${encodeURIComponent("[\"${config.regionGeoUrn}\"]")}"
             }
