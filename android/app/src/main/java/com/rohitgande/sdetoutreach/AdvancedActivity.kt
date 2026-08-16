@@ -4,10 +4,11 @@ package com.rohitgande.sdetoutreach
 
 import android.annotation.SuppressLint
 import android.os.Bundle
+import android.view.ViewGroup
 import android.webkit.CookieManager
 import android.webkit.WebView
+import android.widget.LinearLayout
 import androidx.activity.ComponentActivity
-import androidx.activity.compose.setContent
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -25,12 +26,10 @@ import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -38,9 +37,9 @@ import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.ComposeView
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.viewinterop.AndroidView
 import com.rohitgande.sdetoutreach.data.Settings
 import com.rohitgande.sdetoutreach.gemini.GeminiClient
 import com.rohitgande.sdetoutreach.mail.OutgoingEmail
@@ -59,45 +58,84 @@ import java.time.Instant
 // Debug tools that exercise one half of the pipeline at a time — useful when something
 // upstream (Sheets, Gemini, SMTP) needs isolating from the rest. Ordinary use is
 // MainActivity's single "Run Now" button; these three are for troubleshooting only.
+//
+// The scrape-only WebView preview is a plain (non-Compose) view sitting between two
+// ComposeViews, not wrapped in Compose's AndroidView inside the scrollable tools column
+// — on this device that combination never composites to the screen even though the
+// WebView works correctly otherwise (loads pages, runs JS). See LoginActivity's history
+// for the full investigation. Consequence: the preview is now a fixed panel above the
+// tools list rather than embedded inside the "Scrape only" card itself, since a native
+// view can't be interleaved mid-scroll inside a Compose column.
 class AdvancedActivity : ComponentActivity() {
+
+    private lateinit var webView: WebView
 
     @SuppressLint("SetJavaScriptEnabled")
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-        setContent {
-            SdetOutreachTheme {
-                AdvancedScreen(onBack = { finish() })
+
+        webView = WebView(this).apply {
+            val cookieManager = CookieManager.getInstance()
+            cookieManager.setAcceptCookie(true)
+            cookieManager.setAcceptThirdPartyCookies(this, true)
+            settings.javaScriptEnabled = true
+            settings.domStorageEnabled = true
+        }
+
+        val topBar = ComposeView(this).apply {
+            setContent {
+                SdetOutreachTheme {
+                    TopAppBar(
+                        title = { Text("Advanced") },
+                        navigationIcon = {
+                            IconButton(onClick = { finish() }) {
+                                Icon(Icons.Filled.ArrowBack, contentDescription = "Back")
+                            }
+                        },
+                    )
+                }
             }
         }
+
+        val body = ComposeView(this).apply {
+            setContent {
+                SdetOutreachTheme {
+                    AdvancedBody(webView)
+                }
+            }
+        }
+
+        val density = resources.displayMetrics.density
+        val root = LinearLayout(this).apply {
+            orientation = LinearLayout.VERTICAL
+            addView(
+                topBar,
+                LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT),
+            )
+            addView(webView, LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, (160 * density).toInt()))
+            addView(body, LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, 0, 1f))
+        }
+        setContentView(root)
+    }
+
+    override fun onDestroy() {
+        webView.destroy()
+        super.onDestroy()
     }
 }
 
 @Composable
-private fun AdvancedScreen(onBack: () -> Unit) {
-    Scaffold(
-        topBar = {
-            TopAppBar(
-                title = { Text("Advanced") },
-                navigationIcon = {
-                    IconButton(onClick = onBack) {
-                        Icon(Icons.Filled.ArrowBack, contentDescription = "Back")
-                    }
-                },
-            )
-        },
-    ) { padding ->
-        Column(
-            modifier = Modifier
-                .fillMaxSize()
-                .padding(padding)
-                .verticalScroll(rememberScrollState())
-                .padding(16.dp),
-            verticalArrangement = Arrangement.spacedBy(16.dp),
-        ) {
-            ScrapeOnlyCard()
-            SendOnlyCard()
-            SmtpTestCard()
-        }
+private fun AdvancedBody(webView: WebView) {
+    Column(
+        modifier = Modifier
+            .fillMaxSize()
+            .verticalScroll(rememberScrollState())
+            .padding(16.dp),
+        verticalArrangement = Arrangement.spacedBy(16.dp),
+    ) {
+        ScrapeOnlyCard(webView)
+        SendOnlyCard()
+        SmtpTestCard()
     }
 }
 
@@ -116,29 +154,16 @@ private fun ToolCard(title: String, description: String, content: @Composable ()
 }
 
 @Composable
-private fun ScrapeOnlyCard() {
+private fun ScrapeOnlyCard(webView: WebView) {
     val context = LocalContext.current
     val scope = rememberCoroutineScope()
     var running by remember { mutableStateOf(false) }
     var log by remember { mutableStateOf("") }
-    val webView = remember {
-        WebView(context).apply {
-            val cookieManager = CookieManager.getInstance()
-            cookieManager.setAcceptCookie(true)
-            cookieManager.setAcceptThirdPartyCookies(this, true)
-            settings.javaScriptEnabled = true
-            settings.domStorageEnabled = true
-        }
-    }
-    DisposableEffect(Unit) { onDispose { webView.destroy() } }
 
     ToolCard(
         title = "Scrape only",
         description = "Scrapes LinkedIn, screens results with Gemini, and writes new rows to the Posts sheet. Does not send any email.",
     ) {
-        Card(modifier = Modifier.fillMaxWidth().height(160.dp)) {
-            AndroidView(factory = { webView }, modifier = Modifier.fillMaxSize())
-        }
         Button(
             onClick = {
                 running = true
