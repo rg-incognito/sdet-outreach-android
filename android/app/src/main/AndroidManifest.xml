@@ -33,6 +33,11 @@
             android:label="Log into LinkedIn" />
 
         <activity
+            android:name=".DebugWebViewActivity"
+            android:exported="false"
+            android:label="Debug WebView" />
+
+        <activity
             android:name=".RunActivity"
             android:exported="false"
             android:label="Run Now" />

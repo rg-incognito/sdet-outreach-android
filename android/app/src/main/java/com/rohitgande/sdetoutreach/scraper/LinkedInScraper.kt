@@ -58,15 +58,18 @@ object LinkedInScraper {
                 navigateAndWait(webView, searchUrl)
                 randomDelay(2000, 5000)
 
-                val landedUrl = evalJsRaw(webView, "window.location.href")
-                Log.i(TAG, "Landed on: $landedUrl")
-
                 val targetCount = config.maxJobsPerRun - results.size
                 val rawCount = loadMorePosts(webView, targetCount)
                 val count = minOf(rawCount, targetCount)
 
                 if (count == 0) {
-                    Log.w(TAG, "No posts found for query \"$query\" — selectors may be stale, or the request was blocked.")
+                    val bodyText = evalJsRaw(webView, "document.body ? document.body.innerText : ''")
+                    val reason = if (bodyText.contains("No results found")) {
+                        "LinkedIn returned zero real results for this query"
+                    } else {
+                        "selectors may be stale, or the request was blocked"
+                    }
+                    Log.w(TAG, "No posts found for query \"$query\" — $reason.")
                     continue
                 }
 
