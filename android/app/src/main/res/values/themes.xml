@@ -1,0 +1,3 @@
+<resources>
+    <style name="Theme.SDETOutreach" parent="android:Theme.Material.Light.NoActionBar" />
+</resources>
